@@ -1,0 +1,12 @@
+{
+  "name": "covercraft",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CoverCraft — AI cover letters that don't sound like AI. Pure static Zibby app, zero runtime dependencies.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

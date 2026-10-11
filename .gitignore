@@ -1,0 +1,14 @@
+# secrets & local junk — never commit
+node_modules/
+*.tgz
+*.log
+.DS_Store
+.env
+.env.*
+!*.example
+
+# Cloudflare worker secrets / cost watcher must never reach this repo
+cover-letter-pro-keys.txt
+_test_key.json
+_list_check*.json
+c1_cost_watch.py
