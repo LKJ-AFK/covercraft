@@ -603,18 +603,36 @@ import {
     }
   });
 
-  if (window.jsPDFAvailable !== false) {
-    try {
-      var dlBtn = document.getElementById('dlPdf');
-      if (dlBtn) {
-        dlBtn.addEventListener('click', function(){
-          var l = letters[curIdx];
-          if (!l) return;
-          downloadPdf(l);
-        });
-      }
-    } catch (e) { /* noop */ }
+  // ---- explicit bindings for copy + pdf buttons (Zibby HTML uses these ids) ----
+  function cleanBody(t) {
+    return String(t == null ? '' : t).replace(/«VERIFY»/g, '').replace(/«\/VERIFY»/g, '');
   }
+  function bindCopy(id, getter) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('click', function(){
+      copyText(cleanBody(getter())).catch(function(){});
+    });
+  }
+  bindCopy('copyAll', function(){ return letterBody ? letterBody.innerText : ''; });
+  bindCopy('copyThis', function(){ var l = letters[curIdx]; return l ? l.body : ''; });
+  bindCopy('copyEmail', function(){ return emailBody ? emailBody.innerText : ''; });
+  bindCopy('copyDiag', function(){
+    var t = dParas ? dParas.innerText : '';
+    if (dIssuesPanel && dIssuesPanel.style.display !== 'none' && dIssuesList) t += '\n\nISSUES TO FIX:\n' + dIssuesList.innerText;
+    if (dImpPanel && dImpPanel.style.display !== 'none' && dImpList) t += '\n\nIMPROVEMENTS:\n' + dImpList.innerText;
+    return t;
+  });
+  bindCopy('copyImproved', function(){ return dImprovedBody ? dImprovedBody.innerText : ''; });
+
+  function bindPdf(id, getter) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('click', function(){
+      downloadPdf({ body: cleanBody(getter()) });
+    });
+  }
+  bindPdf('pdfThis', function(){ var l = letters[curIdx]; return l ? l.body : ''; });
+  bindPdf('pdfEmail', function(){ return emailBody ? emailBody.innerText : ''; });
+  bindPdf('pdfImproved', function(){ return dImprovedBody ? dImprovedBody.innerText : ''; });
 
   function downloadPdf(l) {
     if (!window.jspdf) {
