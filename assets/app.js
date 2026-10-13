@@ -7,10 +7,10 @@
 import {
   generateAll, diagnoseCore, diagnoseFull, interviewPrep, emailVersion,
   MAX_LEN
-} from './assets/core.js';
+} from './core.js';
 import {
   streamZibbyAi, installHostBridge, navigateHost, ZIBBY_CREDITS_PATH
-} from './assets/vendor/zibby/index.js';
+} from './vendor/zibby/index.js';
 
 (function(){
   'use strict';
