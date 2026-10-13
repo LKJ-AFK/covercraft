@@ -543,12 +543,51 @@ import {
     // Async fallback: clipboard API may be blocked by the embedding page policy.
     if (navigator.clipboard && window.isSecureContext) {
       return navigator.clipboard.writeText(t).then(function(){ toast('Copied!'); }, function(){
-        toast('Copy blocked by this page — select the text and press Ctrl+C');
+        showCopyModal(t);
         return Promise.reject(new Error('copy failed'));
       });
     }
-    toast('Copy blocked by this page — select the text and press Ctrl+C');
+    showCopyModal(t);
     return Promise.reject(new Error('copy failed'));
+  }
+  function showCopyModal(t) {
+    var old = document.getElementById('ccCopyModal');
+    if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'ccCopyModal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:14px;max-width:660px;width:92%;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;';
+    var head = document.createElement('div');
+    head.style.cssText = 'padding:14px 20px;background:#0ea5e9;color:#fff;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
+    var title = document.createElement('span');
+    title.textContent = 'Copy blocked by the browser — copy manually below';
+    head.appendChild(title);
+    var close = document.createElement('button');
+    close.textContent = '\u00d7';
+    close.style.cssText = 'background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0 2px;';
+    close.setAttribute('aria-label', 'Close');
+    head.appendChild(close);
+    var body = document.createElement('div');
+    body.style.cssText = 'padding:16px 20px;flex:1;overflow:auto;';
+    var hint = document.createElement('p');
+    hint.style.cssText = 'margin:0 0 10px;font-size:13px;color:#475569;';
+    hint.textContent = 'The text is selected below — press Ctrl+C (\u2318C on Mac) to copy, then close this window.';
+    var tarea = document.createElement('textarea');
+    tarea.readOnly = true;
+    tarea.value = t;
+    tarea.style.cssText = 'width:100%;height:280px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:14px;line-height:1.6;font-family:inherit;resize:vertical;box-sizing:border-box;';
+    body.appendChild(hint);
+    body.appendChild(tarea);
+    card.appendChild(head);
+    card.appendChild(body);
+    m.appendChild(card);
+    document.body.appendChild(m);
+    tarea.focus();
+    tarea.select();
+    close.addEventListener('click', function(){ m.remove(); });
+    m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+    document.addEventListener('keydown', function esc(e){ if (e.key === 'Escape') { m.remove(); document.removeEventListener('keydown', esc); } });
   }
 
   document.addEventListener('click', function(e){
@@ -601,8 +640,23 @@ import {
         doc.text(lines[i], margin, y);
         y += 15;
       }
-      doc.save('cover-letter.pdf');
-      setTimeout(function(){ toast('PDF download started — check your downloads bar'); }, 80);
+      // Main path: open the PDF in a new tab so it works even when the embedded
+      // view blocks direct downloads; the user can save from the built-in viewer.
+      try {
+        var blob = doc.output('blob');
+        var url = URL.createObjectURL(blob);
+        var win = window.open(url, '_blank');
+        if (win) {
+          toast('PDF opened in a new tab — save it from there');
+        } else {
+          // Popup blocked: fall back to a direct download attempt.
+          doc.save('cover-letter.pdf');
+          setTimeout(function(){ toast('PDF download started — check your downloads bar'); }, 80);
+        }
+      } catch (e2) {
+        doc.save('cover-letter.pdf');
+        setTimeout(function(){ toast('PDF download started — check your downloads bar'); }, 80);
+      }
     } catch (e) {
       toast('PDF blocked in this embedded view — tap Full Screen (top-right) and try again');
     }
