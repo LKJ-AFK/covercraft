@@ -449,11 +449,12 @@ import {
     var out = '';
     var paras = s.split(/\n\s*\n/);
     for (var pi = 0; pi < paras.length; pi++) {
-      var p = paras[pi];
+      var p = escapeHtml(paras[pi]);
       p = p.replace(/«VERIFY»([\s\S]*?)«\/VERIFY»/g, function(m, inner){
-        return '<mark class="vchip" data-s="' + escapeHtml(inner.trim()) + '">' + escapeHtml(inner.trim()) + '</mark>';
+        var t = inner.trim();
+        return '<mark class="vchip" data-s="' + t + '">' + t + '</mark>';
       });
-      p = escapeHtml(p).replace(/\n/g, '<br>');
+      p = p.replace(/\n/g, '<br>');
       out += '<p>' + p + '</p>';
     }
     return out;
