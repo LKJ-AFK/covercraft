@@ -524,12 +524,9 @@ import {
 
   // ---- copy + download ----
   function copyText(t) {
-    if (navigator.clipboard && window.isSecureContext) {
-      return navigator.clipboard.writeText(t).then(function(){ toast('Copied!'); }, function(){ return fallbackCopy(t); });
-    }
-    return fallbackCopy(t);
-  }
-  function fallbackCopy(t) {
+    // execCommand must run synchronously inside the user gesture; try it first.
+    // It is not affected by Permissions-Policy (clipboard-write), which Zibby's
+    // embedded page blocks for navigator.clipboard.
     var ta = document.createElement('textarea');
     ta.value = t;
     ta.style.position = 'fixed';
@@ -539,8 +536,19 @@ import {
     var ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
     document.body.removeChild(ta);
-    if (ok) toast('Copied!');
-    return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'));
+    if (ok) {
+      toast('Copied!');
+      return Promise.resolve();
+    }
+    // Async fallback: clipboard API may be blocked by the embedding page policy.
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(t).then(function(){ toast('Copied!'); }, function(){
+        toast('Copy blocked by this page — select the text and press Ctrl+C');
+        return Promise.reject(new Error('copy failed'));
+      });
+    }
+    toast('Copy blocked by this page — select the text and press Ctrl+C');
+    return Promise.reject(new Error('copy failed'));
   }
 
   document.addEventListener('click', function(e){
@@ -575,24 +583,29 @@ import {
       copyText(String(l.body || '').replace(/«VERIFY»/g, '').replace(/«\/VERIFY»/g, '')).catch(function(){});
       return;
     }
-    var doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
-    var margin = 48;
-    var w = doc.internal.pageSize.getWidth();
-    var maxW = w - margin * 2;
-    var y = margin + 10;
-    var lines = doc.splitTextToSize(String(l.body || '').replace(/«VERIFY»/g, '').replace(/«\/VERIFY»/g, ''), maxW);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(30);
-    for (var i = 0; i < lines.length; i++) {
-      if (y > doc.internal.pageSize.getHeight() - margin) {
-        doc.addPage();
-        y = margin + 10;
+    try {
+      var doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+      var margin = 48;
+      var w = doc.internal.pageSize.getWidth();
+      var maxW = w - margin * 2;
+      var y = margin + 10;
+      var lines = doc.splitTextToSize(String(l.body || '').replace(/«VERIFY»/g, '').replace(/«\/VERIFY»/g, ''), maxW);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(30);
+      for (var i = 0; i < lines.length; i++) {
+        if (y > doc.internal.pageSize.getHeight() - margin) {
+          doc.addPage();
+          y = margin + 10;
+        }
+        doc.text(lines[i], margin, y);
+        y += 15;
       }
-      doc.text(lines[i], margin, y);
-      y += 15;
+      doc.save('cover-letter.pdf');
+      setTimeout(function(){ toast('PDF download started — check your downloads bar'); }, 80);
+    } catch (e) {
+      toast('PDF blocked in this embedded view — tap Full Screen (top-right) and try again');
     }
-    doc.save('cover-letter.pdf');
   }
 
   // ==================== diagnose rendering ====================
